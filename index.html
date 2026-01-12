@@ -806,38 +806,42 @@
         const tbody = document.getElementById('sectionList');
         tbody.innerHTML = "";
 
-        // Check active sections in this course
+        // Find the active Lecture (Pure Lecture, not Lab/Tutorial)
         const activeLecture = addedSections.find(s => s.code === course.code && s.sec.id.startsWith('L') && !s.sec.id.startsWith('LA'));
         
         course.sections.forEach(sec => {
             const uid = `${course.code}-${sec.id}`;
             const isAdded = addedSections.some(x => x.uid === uid);
             
-            // Identify types
-            const isLecture = sec.id.startsWith('L') && !sec.id.startsWith('LA');
-            const isSubSection = sec.id.startsWith('T') || sec.id.startsWith('LA');
+            // Define Section Types
+            const isLecture = sec.id.startsWith('L') && !sec.id.startsWith('LA'); // L1, L2
+            const isTutorial = sec.id.startsWith('T');    // T1, T1A
+            const isLab = sec.id.startsWith('LA');        // LA1, LA1A
+            const isSubSection = isTutorial || isLab;     // Both need matching
 
             let isDisabled = false;
             let tooltip = "";
 
-            // --- RULE 1: GREY OUT OTHER LECTURES ---
+            // RULE 1: Grey out other Lectures
             if (isLecture && activeLecture && !isAdded) {
                 isDisabled = true;
                 tooltip = "You can only select one Lecture per course";
             }
 
-            // --- RULE 2: ENFORCE MATCHING FOR TUTORIALS/LABS ---
+            // RULE 2: Grey out unmatched Tutorials AND Labs
             if (course.matchingRequired && isSubSection) {
                 if (!activeLecture) {
                     isDisabled = true;
                     tooltip = "Please select a Lecture first";
                 } else {
-                    const lecNum = activeLecture.sec.id.replace(/\D/g, '');
-                    const subNum = sec.id.replace(/\D/g, '');
+                    // Extract Numbers to match: "L01" -> "01", "LA1" -> "1"
+                    const lecNum = activeLecture.sec.id.replace(/\D/g, ''); // "L1" -> "1"
+                    const subNum = sec.id.replace(/\D/g, '');               // "LA1" -> "1"
                     
+                    // The numbers must match (e.g. L1 matches T1 and LA1)
                     if (lecNum !== subNum) {
                         isDisabled = true;
-                        tooltip = `Matches Lecture ${lecNum} only`;
+                        tooltip = `This section matches Lecture ${lecNum} only`;
                     }
                 }
             }
@@ -849,7 +853,7 @@
                 if(slot.instructor && slot.instructor !== "TBA") instrSet.add(slot.instructor);
             });
 
-            // --- RENDER ROW ---
+            // Render Row
             const tr = document.createElement('tr');
             
             if (isSubSection) tr.style.backgroundColor = "#fafafa";
@@ -873,7 +877,6 @@
 
         document.getElementById('modalOverlay').style.display = 'flex';
     }
-
 
     function refreshModalContent() {
         if(!currentModalCourse) return;
@@ -996,3 +999,4 @@
 </script>
 </body>
 </html>
+
