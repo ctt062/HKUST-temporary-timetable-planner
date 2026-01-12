@@ -4,12 +4,12 @@ import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
 
-# --- CONFIGURATION ---
-TERM_CODE = '2530' # Spring 2025-26
+# --- CONFIGURATION --- 
+TERM_CODE = '2530' # Spring 2025-26 (TO BE AMENDED EVERY SEMESTER)
 BASE_URL = f"https://w5.ab.ust.hk/wcq/cgi-bin/{TERM_CODE}/subject/"
 OUTPUT_FOLDER = "html_files"
 
-# Full List of Subjects (Parsed from your string)
+# Full List of Subjects (TO BE AMENDED EVERY SEMESTER)
 SUBJECTS = [
     'ACCT', 'AESF', 'AIAA', 'AISC', 'AMAT', 'AMCC', 'ARIN', 'BEHI', 'BIBU', 'BIEN', 
     'BSBE', 'BTEC', 'CENG', 'CHEM', 'CHMS', 'CIEM', 'CIVL', 'CMAA', 'COMP', 'CPEG', 
