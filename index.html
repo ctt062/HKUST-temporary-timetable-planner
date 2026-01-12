@@ -878,7 +878,18 @@
                 }
             }
         }
-
+        
+        // Exclusion check
+        if (Array.isArray(course.exclusions) && course.exclusions.length > 0) {
+            for (let exCode of course.exclusions) {
+                const clash = addedSections.find(x => x.code === exCode);
+                if (clash) {
+                    alert(`Exclusion rule: ${course.code} cannot be taken together with ${exCode}. Remove ${exCode} first.`);
+                    return;
+                }
+            }
+        }
+        
         addedSections.push({ uid, code, credits: course.credits, sec });
         savePlans();
         initGrid();
@@ -931,3 +942,4 @@
 </script>
 </body>
 </html>
+
