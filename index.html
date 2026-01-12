@@ -435,6 +435,7 @@
 </header>
 
 <div class="container">
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
     
     <aside id="sidebar">
         <div class="search-box">
@@ -713,7 +714,6 @@
             li.innerHTML = `<span class="c-code">${c.code}</span><span class="c-title">${c.title}</span>`;
             li.onclick = () => {
                 openModal(c);
-                if(window.innerWidth <= 768) closeSidebar();
             };
             list.appendChild(li);
         });
@@ -1104,5 +1104,6 @@
 </script>
 </body>
 </html>
+
 
 
