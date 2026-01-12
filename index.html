@@ -801,49 +801,43 @@
     // Store current course in modal for refresh
     let currentModalCourse = null;
 
-    // Modal
     function openModal(course) {
         document.getElementById('modalTitle').textContent = `${course.code} - ${course.title}`;
         const tbody = document.getElementById('sectionList');
         tbody.innerHTML = "";
 
-        // Check if a Lecture or Tutorial is already in the current plan for this course
-        const activeLecture = addedSections.find(s => s.code === course.code && s.sec.id.startsWith('L'));
-        const activeTutorial = addedSections.find(s => s.code === course.code && (s.sec.id.startsWith('T') || s.sec.id.startsWith('LA')));
-
+        // Check active sections in this course
+        const activeLecture = addedSections.find(s => s.code === course.code && s.sec.id.startsWith('L') && !s.sec.id.startsWith('LA'));
+        
         course.sections.forEach(sec => {
             const uid = `${course.code}-${sec.id}`;
             const isAdded = addedSections.some(x => x.uid === uid);
-            const isLecture = sec.id.startsWith('L');
-            const isTutorial = sec.id.startsWith('T') || sec.id.startsWith('LA');
+            
+            // Identify types
+            const isLecture = sec.id.startsWith('L') && !sec.id.startsWith('LA');
+            const isSubSection = sec.id.startsWith('T') || sec.id.startsWith('LA');
 
             let isDisabled = false;
             let tooltip = "";
 
-            // 1. Prevent duplicate lectures for the same course
+            // --- RULE 1: GREY OUT OTHER LECTURES ---
             if (isLecture && activeLecture && !isAdded) {
                 isDisabled = true;
-                tooltip = "Only one lecture can be added per course";
+                tooltip = "You can only select one Lecture per course";
             }
 
-            // 2. Prevent duplicate tutorials/labs for the same course
-            if (isTutorial && activeTutorial && !isAdded) {
-                isDisabled = true;
-                tooltip = "Only one tutorial/lab can be added per course";
-            }
-
-            // 3. Enforce matching requirement for tutorials
-            if (course.matchingRequired && isTutorial && !isAdded) {
+            // --- RULE 2: ENFORCE MATCHING FOR TUTORIALS/LABS ---
+            if (course.matchingRequired && isSubSection) {
                 if (!activeLecture) {
                     isDisabled = true;
                     tooltip = "Please select a Lecture first";
                 } else {
                     const lecNum = activeLecture.sec.id.replace(/\D/g, '');
-                    const tutNum = sec.id.replace(/\D/g, '');
+                    const subNum = sec.id.replace(/\D/g, '');
                     
-                    if (lecNum !== tutNum) {
+                    if (lecNum !== subNum) {
                         isDisabled = true;
-                        tooltip = `Must match Lecture ${lecNum}`;
+                        tooltip = `Matches Lecture ${lecNum} only`;
                     }
                 }
             }
@@ -855,10 +849,11 @@
                 if(slot.instructor && slot.instructor !== "TBA") instrSet.add(slot.instructor);
             });
 
+            // --- RENDER ROW ---
             const tr = document.createElement('tr');
-            if (isDisabled && !isAdded) {
-                tr.style.opacity = "0.4"; 
-            }
+            
+            if (isSubSection) tr.style.backgroundColor = "#fafafa";
+            if (isDisabled && !isAdded) tr.style.opacity = "0.4";
 
             tr.innerHTML = `
                 <td><b>${sec.id}</b></td>
@@ -918,55 +913,42 @@
 
     function addSection(code, secId) {
         const course = courseData.find(c => c.code === code);
-        if(!course) {
-            alert(`Course ${code} not found!`);
-            return;
-        }
         const sec = course.sections.find(s => s.id === secId);
-        if(!sec) {
-            alert(`Section ${secId} not found for ${code}!`);
-            return;
-        }
         
-        const uid = `${code}-${secId}`;
-        // Check if already added
-        if(addedSections.some(x => x.uid === uid)) {
-            alert(`Section ${code} (${secId}) is already added!`);
-            return;
-        }
-        
-        // Check for time conflicts
+        // 1. Conflict Check
         for (let newSlot of sec.slots) {
             for (let existing of addedSections) {
                 for (let existSlot of existing.sec.slots) {
                     const commonDays = newSlot.days.filter(d => existSlot.days.includes(d));
-                    if (commonDays.length > 0) {
-                        if (newSlot.start < existSlot.end && newSlot.end > existSlot.start) {
-                            alert(`Time Conflict with ${existing.code} (${existing.sec.id})`);
-                            return;
-                        }
+                    if (commonDays.length > 0 && newSlot.start < existSlot.end && newSlot.end > existSlot.start) {
+                        alert(`Time Conflict with ${existing.code} (${existing.sec.id})`);
+                        return;
                     }
                 }
             }
         }
-        
-        // Exclusion check
-        if (Array.isArray(course.exclusions) && course.exclusions.length > 0) {
-            for (let exCode of course.exclusions) {
-                const clash = addedSections.find(x => x.code === exCode);
-                if (clash) {
-                    alert(`Exclusion rule: ${course.code} cannot be taken together with ${exCode}. Remove ${exCode} first.`);
-                    return;
-                }
-            }
-        }
-        
-        addedSections.push({ uid, code, credits: course.credits, sec });
+
+        // 2. Commit to Plan
+        addedSections.push({ uid: `${code}-${secId}`, code, credits: course.credits, sec });
         savePlans();
         initGrid();
-        // Refresh modal content instead of closing
-        if(currentModalCourse && currentModalCourse.code === code) {
-            refreshModalContent();
+        closeModal();
+
+        // 3. Reminder Logic for Tutorials AND Labs
+        if (secId.startsWith('L') && !secId.startsWith('LA')) {
+            const hasTutorials = course.sections.some(s => s.id.startsWith('T'));
+            const hasLabs = course.sections.some(s => s.id.startsWith('LA'));
+            
+            if (hasTutorials || hasLabs) {
+                setTimeout(() => {
+                    let missing = [];
+                    if (hasTutorials) missing.push("Tutorial");
+                    if (hasLabs) missing.push("Laboratory");
+                    
+                    alert(`Action Required: ${code} also requires a ${missing.join(" and ")}.`);
+                    openModal(course); // Re-open to pick the missing parts
+                }, 400);
+            }
         }
     }
 
@@ -982,6 +964,7 @@
             if(modal.style.display === 'flex' && currentModalCourse && currentModalCourse.code === removed.code) {
                 refreshModalContent();
             }
+            closeModal(); 
         }
     }
 
@@ -1013,5 +996,3 @@
 </script>
 </body>
 </html>
-
-
