@@ -197,8 +197,17 @@
             cursor: pointer; 
             color: #555;
             font-size: 0.85rem;
+            pointer-events: auto;
+            z-index: 10;
+            position: relative;
         }
         .btn-icon:hover { background: #eee; }
+        .btn-icon:active { background: #ddd; }
+        .btn-icon:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+            pointer-events: none;
+        }
 
         .stats { 
             font-size: 0.85rem; 
@@ -592,62 +601,80 @@
     }
 
     function createNewPlan() {
-        const name = prompt("Enter new plan name:", `Plan ${Object.keys(plans).length + 1}`);
-        if(name) {
-            const trimmedName = name.trim();
-            if(!trimmedName) {
-                alert("Plan name cannot be empty!");
-                return;
+        try {
+            const name = prompt("Enter new plan name:", `Plan ${Object.keys(plans).length + 1}`);
+            if(name) {
+                const trimmedName = name.trim();
+                if(!trimmedName) {
+                    alert("Plan name cannot be empty!");
+                    return;
+                }
+                if(plans[trimmedName]) {
+                    alert(`Plan "${trimmedName}" already exists!`);
+                    return;
+                }
+                plans[trimmedName] = [];
+                currentPlanId = trimmedName;
+                addedSections = plans[currentPlanId];
+                closeModal(); // Close modal when creating new plan
+                savePlans();
+                updatePlanSelect();
+                initGrid();
             }
-            if(plans[trimmedName]) {
-                alert(`Plan "${trimmedName}" already exists!`);
-                return;
-            }
-            plans[trimmedName] = [];
-            currentPlanId = trimmedName;
-            addedSections = plans[currentPlanId];
-            closeModal(); // Close modal when creating new plan
-            savePlans();
-            updatePlanSelect();
-            initGrid();
+        } catch(error) {
+            console.error("Error creating new plan:", error);
+            alert("An error occurred while creating the plan. Please try again.");
         }
     }
 
     function renamePlan() {
-        const name = prompt("Rename current plan:", currentPlanId);
-        if(name) {
-            const trimmedName = name.trim();
-            if(!trimmedName) {
-                alert("Plan name cannot be empty!");
-                return;
+        try {
+            const name = prompt("Rename current plan:", currentPlanId);
+            if(name) {
+                const trimmedName = name.trim();
+                if(!trimmedName) {
+                    alert("Plan name cannot be empty!");
+                    return;
+                }
+                if(trimmedName === currentPlanId) {
+                    return; // No change
+                }
+                if(plans[trimmedName]) {
+                    alert(`Plan "${trimmedName}" already exists!`);
+                    return;
+                }
+                plans[trimmedName] = plans[currentPlanId];
+                delete plans[currentPlanId];
+                currentPlanId = trimmedName;
+                closeModal(); // Close modal when renaming plan
+                savePlans();
+                updatePlanSelect();
+                initGrid(); // Refresh grid to show updated plan
             }
-            if(trimmedName === currentPlanId) {
-                return; // No change
-            }
-            if(plans[trimmedName]) {
-                alert(`Plan "${trimmedName}" already exists!`);
-                return;
-            }
-            plans[trimmedName] = plans[currentPlanId];
-            delete plans[currentPlanId];
-            currentPlanId = trimmedName;
-            savePlans();
-            updatePlanSelect();
+        } catch(error) {
+            console.error("Error renaming plan:", error);
+            alert("An error occurred while renaming the plan. Please try again.");
         }
     }
 
     function deletePlan() {
-        if(Object.keys(plans).length <= 1) {
-            alert("You must have at least one plan.");
-            return;
-        }
-        if(confirm(`Delete "${currentPlanId}"?`)) {
-            delete plans[currentPlanId];
-            currentPlanId = Object.keys(plans)[0];
-            addedSections = plans[currentPlanId];
-            savePlans();
-            updatePlanSelect();
-            initGrid();
+        try {
+            if(Object.keys(plans).length <= 1) {
+                alert("You must have at least one plan.");
+                return;
+            }
+            if(confirm(`Delete "${currentPlanId}"?`)) {
+                delete plans[currentPlanId];
+                currentPlanId = Object.keys(plans)[0];
+                addedSections = plans[currentPlanId];
+                closeModal(); // Close modal when deleting plan
+                savePlans();
+                updatePlanSelect();
+                initGrid();
+            }
+        } catch(error) {
+            console.error("Error deleting plan:", error);
+            alert("An error occurred while deleting the plan. Please try again.");
         }
     }
     
@@ -1101,6 +1128,13 @@
             if(modal.style.display === 'flex') closeModal();
         }
     });
+
+    // Ensure functions are globally accessible
+    window.createNewPlan = createNewPlan;
+    window.renamePlan = renamePlan;
+    window.deletePlan = deletePlan;
+    window.switchPlan = switchPlan;
+    window.clearCurrentPlan = clearCurrentPlan;
 </script>
 </body>
 </html>
